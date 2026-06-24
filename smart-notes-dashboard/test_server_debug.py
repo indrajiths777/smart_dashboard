@@ -1,69 +1,67 @@
 import subprocess
 import time
 import urllib.request
+import json
 import sys
 import os
 
-PORT = 3005  # Use a different port to avoid conflicts
+PORT = 3010
 SERVER_URL = f"http://localhost:{PORT}"
 
 def run_debug():
     print("Starting debug server...")
     
-    # Create log files
-    stdout_file = open("server_stdout.log", "w")
-    stderr_file = open("server_stderr.log", "w")
+    # Modify server.py dynamically to run on port 3010 in this script
+    with open("server.py", "r", encoding="utf-8") as f:
+        code = f.read()
     
-    # Write config to use port 3005 in environment
-    os.environ["PORT"] = str(PORT)
-    
-    # Start server
-    # We modify server.py dynamically to respect PORT from env, or we pass it
-    # Wait, server.py uses PORT = 3000 hardcoded in python. Let's start it.
-    # To run on port 3005, let's write a small wrapper or just run server.py
-    # Since server.py has PORT = 3000, let's change server.py to check for PORT env variable!
-    
-    # Let's run server.py
+    temp_code = code.replace("PORT = 3000", f"PORT = {PORT}")
+    with open("server_temp.py", "w", encoding="utf-8") as f:
+        f.write(temp_code)
+        
+    test_env = os.environ.copy()
+    if "API_KEY" in test_env:
+        del test_env["API_KEY"]
+        
     server_process = subprocess.Popen(
-        [sys.executable, "server.py"],
-        stdout=stdout_file,
-        stderr=stderr_file,
-        cwd=os.path.dirname(os.path.abspath(__file__))
+        [sys.executable, "server_temp.py"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        env=test_env
     )
     
     time.sleep(1.5)
     
     try:
-        # Note: server.py runs on port 3000 by default unless we set port 3000
-        url = "http://localhost:3000"
-        print(f"Requesting {url}/ ...")
-        with urllib.request.urlopen(f"{url}/") as res:
+        # Test POST /api/analyze
+        print(f"Requesting POST {SERVER_URL}/api/analyze ...")
+        payload = json.dumps({"notes": "mitosis biology"}).encode('utf-8')
+        req = urllib.request.Request(
+            f"{SERVER_URL}/api/analyze",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as res:
             print(f"Status: {res.status}")
+            print(f"Response: {res.read().decode()}")
             
-        print(f"Requesting {url}/style.css ...")
-        with urllib.request.urlopen(f"{url}/style.css") as res:
-            print(f"Status: {res.status}")
-            
-        print(f"Requesting {url}/app.js ...")
-        with urllib.request.urlopen(f"{url}/app.js") as res:
-            print(f"Status: {res.status}")
-            
-        print("Success! All static requests completed.")
-        
+    except urllib.error.HTTPError as e:
+        print(f"HTTPError occurred: {e.code} {e.reason}")
+        try:
+            print(f"Response body: {e.read().decode('utf-8')}")
+        except Exception as read_err:
+            print(f"Could not read response body: {read_err}")
     except Exception as e:
-        print(f"Error occurred: {e}")
-        # Read stderr
-        stderr_file.flush()
-        with open("server_stderr.log", "r") as f:
-            print("\n--- SERVER STDERR LOG ---")
-            print(f.read())
-            print("-------------------------")
+        print(f"Generic error occurred: {e}")
             
     finally:
         server_process.terminate()
         server_process.wait()
-        stdout_file.close()
-        stderr_file.close()
+        # Clean up temp file
+        if os.path.exists("server_temp.py"):
+            os.remove("server_temp.py")
 
 if __name__ == '__main__':
     run_debug()
