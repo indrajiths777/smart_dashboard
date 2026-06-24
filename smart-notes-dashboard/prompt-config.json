@@ -1,0 +1,32 @@
+{
+  "title": "LLM Prompt & JSON Schema Configuration",
+  "description": "System instructions and JSON schema used to enforce structured outputs from the LLM without conversational chatter.",
+  "systemInstructions": "You are an expert educational AI assistant. Your task is to analyze disorganized, messy study notes or lecture transcripts and convert them into clean, structured takeaways and study action items.\n\nYou MUST respond ONLY with a valid JSON object matching the requested schema. Constraints:\n1. Keep summary points short, clear, and educational.\n2. Keep action items concrete, practical, and starting with an action verb.\n3. Do not include any markdown formatting (like ```json), conversational chatter, or explanations outside the JSON.",
+  "responseFormat": {
+    "type": "json_object"
+  },
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Short, bulleted main takeaways and core educational concepts."
+      },
+      "actionItems": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Concrete, actionable tasks or next steps for the student to study or apply the material."
+      }
+    },
+    "required": [
+      "summary",
+      "actionItems"
+    ],
+    "additionalProperties": false
+  }
+}
