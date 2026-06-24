@@ -14,13 +14,29 @@ def run_tests():
     print("Starting Automated Server & API Verification Tests")
     print("==================================================")
     
+    # Temporarily rename .env if it exists to force Simulated Mode in offline sandbox
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    env_bak_path = env_path + ".bak"
+    has_env = os.path.exists(env_path)
+    
+    if has_env:
+        print("Temporarily renaming .env to .env.bak for offline tests...")
+        if os.path.exists(env_bak_path):
+            os.remove(env_bak_path)
+        os.rename(env_path, env_bak_path)
+        
     # 1. Start Python Server in background
     print("\n[1/5] Starting server.py in background...")
+    test_env = os.environ.copy()
+    if "API_KEY" in test_env:
+        del test_env["API_KEY"]
+        
     server_process = subprocess.Popen(
         [sys.executable, "server.py"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        cwd=os.path.dirname(os.path.abspath(__file__))
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        env=test_env
     )
     
     # Wait for server to boot
@@ -29,6 +45,9 @@ def run_tests():
     # Check if process is still running
     if server_process.poll() is not None:
         print("[FAIL] Error: Server failed to start immediately.")
+        # Restore env if we renamed it
+        if has_env:
+            os.rename(env_bak_path, env_path)
         sys.exit(1)
         
     print("[SUCCESS] Server successfully started.")
@@ -72,7 +91,7 @@ def run_tests():
                 else:
                     raise Exception("Missing required schema fields in response.")
         except Exception as e:
-            print(f"[FAIL] Failed: /api/prompt-config failed: {e}")
+            print(f"[FAIL] Failed: /api/prompt_config failed: {e}")
             raise e
 
         # 5. Test Note Analysis Endpoint (Simulated Mode)
@@ -114,6 +133,14 @@ def run_tests():
         server_process.terminate()
         server_process.wait()
         print("Server process shut down.")
+        
+        # Restore the original .env file
+        if has_env:
+            print("Restoring original .env file...")
+            if os.path.exists(env_path):
+                os.remove(env_path)
+            os.rename(env_bak_path, env_path)
+            print(".env file restored successfully.")
 
 if __name__ == '__main__':
     run_tests()

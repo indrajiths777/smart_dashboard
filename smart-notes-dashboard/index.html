@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Smart Notes & Action Item Dashboard | Tomatrix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Glow Elements -->
+    <div class="glow-bg glow-purple"></div>
+    <div class="glow-bg glow-blue"></div>
+
+    <div class="app-container">
+        <!-- App Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>TOMATRIX</h1>
+                    <span class="sub-brand">EduFlick AI Task 14</span>
+                </div>
+            </div>
+            <div class="dashboard-title">
+                <h2>AI-Powered Smart Notes & Action Items</h2>
+            </div>
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span id="connection-status">Checking Mode...</span>
+            </div>
+        </header>
+
+        <!-- Dashboard Layout Grid -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Panel: Input & Settings -->
+            <section class="grid-col sidebar-col">
+                <!-- Ingestion Card -->
+                <div class="glass-card input-card">
+                    <div class="card-header">
+                        <div class="card-icon blue-gradient">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <h3>Ingest Study Notes</h3>
+                    </div>
+                    
+                    <div class="card-body">
+                        <p class="card-description">Paste your raw, disorganized lecture transcripts, PDF text, or video notes below to instantly structure them.</p>
+                        
+                        <div class="input-wrapper">
+                            <textarea id="raw-notes" placeholder="Paste your raw, messy notes or video transcript here...
+
+For example:
+'Okay class today we are talking about cell division. So mitosis, mitosis is really key because it makes two identical daughter cells, they have the exact same DNA. And there are stages, remember PMAT. Prophase, Metaphase, Anaphase, Telophase. Oh and spindle fibers draw them to opposite sides. Lastly cytokinesis divides the cytoplasm.'"></textarea>
+                        </div>
+
+                        <div class="quick-samples">
+                            <span class="label">Quick Samples:</span>
+                            <button type="button" class="sample-btn" id="sample-mitosis">🧬 Cell Biology</button>
+                            <button type="button" class="sample-btn" id="sample-quantum">⚛️ Quantum Physics</button>
+                        </div>
+
+                        <button id="analyze-btn" class="primary-btn">
+                            <span class="btn-text">Analyze Notes</span>
+                            <span class="btn-loader hidden">
+                                <span class="spinner"></span>
+                                Processing...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- JSON Configuration Card -->
+                <div class="glass-card prompt-card">
+                    <button class="accordion-toggle" id="toggle-prompt-config">
+                        <div class="card-header-inner">
+                            <div class="card-icon purple-gradient">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="16 18 22 12 16 6"></polyline>
+                                    <polyline points="8 6 2 12 8 18"></polyline>
+                                </svg>
+                            </div>
+                            <h3>JSON Prompt Schema</h3>
+                        </div>
+                        <span class="chevron">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </span>
+                    </button>
+                    
+                    <div class="accordion-content hidden" id="prompt-config-content">
+                        <div class="prompt-details">
+                            <p class="config-meta">Below is the exact schema and instructions passed to the LLM to force clean structured JSON without conversational chatter.</p>
+                            <div class="code-container">
+                                <div class="code-header">
+                                    <span>System Prompt & Schema</span>
+                                    <button class="copy-btn" id="copy-prompt-btn">Copy</button>
+                                </div>
+                                <pre><code id="json-config-code">Loading config...</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Structured Output Dashboard -->
+            <section class="grid-col output-col">
+                <div class="output-wrapper-grid">
+                    
+                    <!-- Takeaways/Summary Card -->
+                    <div class="glass-card output-card" id="summary-section">
+                        <div class="card-header">
+                            <div class="card-icon cyan-gradient">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                </svg>
+                            </div>
+                            <h3>Key Summaries</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Empty State -->
+                            <div class="empty-state" id="summary-empty">
+                                <div class="empty-icon">💡</div>
+                                <h4>No Summary Generated Yet</h4>
+                                <p>Paste notes on the left and click "Analyze Notes" to extract the core educational concepts.</p>
+                            </div>
+
+                            <!-- Summary List (Generated) -->
+                            <div class="summary-list-wrapper hidden" id="summary-content">
+                                <ul class="takeaways-list" id="takeaways-list-ul">
+                                    <!-- Dynamic content goes here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checklist/Action Items Card -->
+                    <div class="glass-card output-card" id="checklist-section">
+                        <div class="card-header header-with-progress">
+                            <div class="card-title-group">
+                                <div class="card-icon green-gradient">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 11 12 14 22 4"></polyline>
+                                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                    </svg>
+                                </div>
+                                <h3>Action Items Checklist</h3>
+                            </div>
+                            <!-- Mini Progress Tracker -->
+                            <div class="checklist-progress hidden" id="checklist-progress-container">
+                                <span class="progress-text" id="progress-text">0% Complete</span>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- Empty State -->
+                            <div class="empty-state" id="checklist-empty">
+                                <div class="empty-icon">✅</div>
+                                <h4>No Action Items Yet</h4>
+                                <p>Your study checklist will appear here once the notes are analyzed.</p>
+                            </div>
+
+                            <!-- Checklist Items (Generated) -->
+                            <div class="checklist-wrapper hidden" id="checklist-content">
+                                <div class="checklist-items" id="checklist-items-container">
+                                    <!-- Dynamic checklist goes here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Confetti Canvas for 100% completion celebration -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,33 +1,11 @@
-import os
+from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
 import urllib.error
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+import os
+import traceback
 
-PORT = 3000
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PUBLIC_DIR = os.path.join(CURRENT_DIR, 'public')
-
-# Helper to read .env file manually (zero-dependency approach)
-def load_env():
-    env_vars = {}
-    env_path = os.path.join(CURRENT_DIR, '.env')
-    if os.path.exists(env_path):
-        try:
-            with open(env_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, val = line.split('=', 1)
-                        env_vars[key.strip()] = val.strip().strip('"').strip("'")
-        except Exception as e:
-            print(f"Warning: Failed to read .env file: {e}")
-    return env_vars
-
-ENV = load_env()
-
-class DashboardHandler(SimpleHTTPRequestHandler):
-    # Support CORS preflight options request
+class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -36,72 +14,43 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if self.path == '/api/analyze':
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
+        try:
+            # Safely get and parse Content-Length
+            content_length_header = self.headers.get('Content-Length')
+            content_length = int(content_length_header) if content_length_header and content_length_header.isdigit() else 0
             
-            try:
-                data = json.loads(post_data.decode('utf-8'))
-                notes_text = data.get('notes', '')
-                
-                # Fetch config from env
-                api_key = ENV.get('API_KEY', os.environ.get('API_KEY', ''))
-                base_url = ENV.get('BASE_URL', os.environ.get('BASE_URL', 'https://api.groq.com/openai/v1'))
-                model = ENV.get('MODEL', os.environ.get('MODEL', 'llama-3.3-70b-specdec'))
-                
-                if not api_key:
-                    # Simulated output fallback
-                    response_data = self.generate_simulated_response(notes_text)
-                    self.send_json_response(response_data)
-                    return
-                
-                # Real API call
-                response_data = self.call_llm_api(api_key, base_url, model, notes_text)
+            post_data = b''
+            if content_length > 0:
+                post_data = self.rfile.read(content_length)
+            
+            data = {}
+            if post_data:
+                try:
+                    data = json.loads(post_data.decode('utf-8'))
+                except Exception as je:
+                    print(f"JSON Decode Warning: {je}")
+                    
+            notes_text = data.get('notes', '')
+            
+            # Fetch config directly from Vercel injected environment variables
+            api_key = os.environ.get('API_KEY', '')
+            base_url = os.environ.get('BASE_URL', 'https://api.groq.com/openai/v1')
+            model = os.environ.get('MODEL', 'llama-3.3-70b-specdec')
+            
+            if not api_key:
+                # Simulated output fallback
+                response_data = self.generate_simulated_response(notes_text)
                 self.send_json_response(response_data)
-                
-            except Exception as e:
-                print(f"Error handling request: {e}")
-                self.send_error_response(500, str(e))
-        else:
-            self.send_error_response(404, "Endpoint not found")
-
-    def do_GET(self):
-        # Serve static files from the public folder
-        if self.path == '/api/prompt_config':
-            self.serve_prompt_config()
-            return
+                return
             
-        # Standard static file serving
-        super().do_GET()
-
-    def translate_path(self, path):
-        # By default, SimpleHTTPRequestHandler looks in the current working directory.
-        # We redirect it to look into the 'public' subfolder instead.
-        if path == '/' or path == '':
-            return os.path.join(PUBLIC_DIR, 'index.html')
+            # Real API call
+            response_data = self.call_llm_api(api_key, base_url, model, notes_text)
+            self.send_json_response(response_data)
             
-        # Parse query params or hash if any (clean paths)
-        clean_path = path.split('?')[0].split('#')[0]
-        relative_path = clean_path.lstrip('/')
-        full_path = os.path.join(PUBLIC_DIR, relative_path)
-        
-        # If folder requested, serve index.html inside it
-        if os.path.isdir(full_path):
-            return os.path.join(full_path, 'index.html')
-            
-        return full_path
-
-    def serve_prompt_config(self):
-        config_path = os.path.join(CURRENT_DIR, 'prompt-config.json')
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-                self.send_json_response(config_data)
-            except Exception as e:
-                self.send_error_response(500, f"Failed to read prompt-config: {e}")
-        else:
-            self.send_error_response(404, "prompt-config.json not found")
+        except Exception as e:
+            # Print full stack trace to Vercel console logs
+            traceback.print_exc()
+            self.send_error_response(500, str(e))
 
     def send_json_response(self, data):
         self.send_response(200)
@@ -118,7 +67,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps({"error": message}).encode('utf-8'))
 
     def generate_simulated_response(self, text):
-        text_lower = text.lower()
+        text_lower = text.lower() if text else ""
         if "quantum" in text_lower:
             summary = [
                 "Quantum superposition allows particles to exist in multiple states simultaneously (e.g. 0 and 1) until measured.",
@@ -146,7 +95,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "Take the mitosis cell-cycle self-assessment quiz on EduFlick AI."
             ]
         else:
-            # Default response based on generic notes or active learning
             summary = [
                 "Active recall and spaced repetition represent the most evidence-based cognitive strategies for long-term study retention.",
                 "Structuring messy notes into modular, visual takeaways dramatically reduces mental fatigue and cognitive overload.",
@@ -207,7 +155,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 response_body = res.read().decode('utf-8')
                 result_json = json.loads(response_body)
                 content = result_json['choices'][0]['message']['content']
-                # Parse the content to make sure it is valid JSON
                 parsed_content = json.loads(content)
                 return {
                     "summary": parsed_content.get("summary", []),
@@ -219,17 +166,3 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             raise Exception(f"API Error {e.code}: {error_body}")
         except Exception as e:
             raise Exception(f"Failed to process API call: {str(e)}")
-
-if __name__ == '__main__':
-    # Make sure public dir exists
-    if not os.path.exists(PUBLIC_DIR):
-        os.makedirs(PUBLIC_DIR)
-        
-    server_address = ('', PORT)
-    httpd = HTTPServer(server_address, DashboardHandler)
-    print(f"Server running at http://localhost:{PORT}")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\nStopping server...")
-        httpd.server_close()
